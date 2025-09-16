@@ -18,3 +18,5 @@ with app.app_context():
     comment = Comment(body='test comment body', photo=photo, author=normal_user)
     db.session.add_all([admin_user, normal_user, comment])
     db.session.commit()
+    
+    #hhhh
