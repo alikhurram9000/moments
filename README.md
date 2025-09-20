@@ -24,6 +24,11 @@ $ pdm install
 > [!TIP]
 > If you don't have PDM installed, you can create a virtual environment with `venv` and install dependencies with `pip install -r requirements.txt`.
 
+
+Command for additional dependencies
+pip install torch torchvision transformers pillow
+
+
 To initialize the app, run the `flask init-app` command:
 
 ```
