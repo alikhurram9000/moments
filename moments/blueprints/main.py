@@ -10,6 +10,10 @@ from moments.models import Collection, Comment, Follow, Notification, Photo, Tag
 from moments.notifications import push_collect_notification, push_comment_notification
 from moments.utils import flash_errors, redirect_back, rename_image, resize_image, validate_image
 
+from moments.utils import generate_captions, classify_image
+from pathlib import Path
+
+
 main_bp = Blueprint('main', __name__)
 
 
@@ -121,7 +125,7 @@ def get_avatar(filename):
 @main_bp.route('/upload', methods=['GET', 'POST'])
 @login_required
 @confirm_required
-@permission_required('UPLOAD')
+@permission_required("UPLOAD")
 def upload():
     if request.method == 'POST':
         if 'file' not in request.files:
@@ -130,15 +134,29 @@ def upload():
         if not validate_image(f.filename):
             return 'Invalid image.', 400
         filename = rename_image(f.filename)
-        f.save(current_app.config['MOMENTS_UPLOAD_PATH'] / filename)
-        filename_s = resize_image(f, filename, current_app.config['MOMENTS_PHOTO_SIZES']['small'])
-        filename_m = resize_image(f, filename, current_app.config['MOMENTS_PHOTO_SIZES']['medium'])
-        photo = Photo(
-            filename=filename, filename_s=filename_s, filename_m=filename_m, author=current_user._get_current_object()
+        upload_dir = Path(current_app.config["MOMENTS_UPLOAD_PATH"])
+        file_path = upload_dir / filename
+        f.save(file_path)
+
+        cond_cap, uncond_cap = generate_captions(str(file_path))
+        labels = classify_image(str(file_path))  
+
+        small_name = resize_image(f, filename, current_app.config["MOMENTS_PHOTO_SIZES"]["small"])
+        med_name = resize_image(f, filename, current_app.config["MOMENTS_PHOTO_SIZES"]["medium"])
+
+        new_photo = Photo(
+            filename=filename,
+            filename_s=small_name,
+            filename_m=med_name,
+            author=current_user._get_current_object(),
+            description=cond_cap.strip()
         )
-        db.session.add(photo)
+        db.session.add(new_photo)
         db.session.commit()
-    return render_template('main/upload.html')
+
+        add_tags_to_photo(new_photo.id, labels)
+
+    return render_template("main/upload.html")
 
 
 @main_bp.route('/photo/<int:photo_id>')
@@ -426,3 +444,27 @@ def delete_tag(photo_id, tag_id):
 
     flash('Tag deleted.', 'info')
     return redirect(url_for('.show_photo', photo_id=photo_id))
+
+
+def add_tags_to_photo(photo_id, labels):
+    if not labels:
+        return
+
+    if isinstance(labels, str):
+        tag_names = [lbl.strip() for lbl in labels.split(",") if lbl.strip()]
+    else:
+        tag_names = list(labels)
+
+    photo = Photo.query.get(photo_id)
+    if not photo:
+        return
+
+    for name in tag_names:
+        tag = Tag.query.filter_by(name=name).first()
+        if not tag:
+            tag = Tag(name=name)
+            db.session.add(tag)
+        if tag not in photo.tags:
+            photo.tags.append(tag)
+
+    db.session.commit()

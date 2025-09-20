@@ -9,6 +9,8 @@ from flask import current_app, flash, redirect, request, url_for
 from jwt.exceptions import InvalidTokenError
 from PIL import Image
 
+from transformers import BlipProcessor, BlipForConditionalGeneration, ViTImageProcessor, ViTForImageClassification
+import torch
 
 def generate_token(user, operation, expiration=3600, **kwargs):
     payload = {
@@ -76,3 +78,41 @@ def flash_errors(form):
     for field, errors in form.errors.items():
         for error in errors:
             flash(f'Error in the {getattr(form, field).label.text} field - {error}')
+
+def generate_captions(image_path, conditional_text="a photography of"):
+
+    blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+    blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+
+    image = Image.open(image_path).convert("RGB")
+
+    def _caption(img, text=None):
+        kwargs = {"return_tensors": "pt"}
+        if text:
+            kwargs["text"] = text
+        inputs = blip_processor(img, text, return_tensors="pt") if text else blip_processor(img, **kwargs)
+        output_ids = blip_model.generate(**inputs)
+        return blip_processor.decode(output_ids[0], skip_special_tokens=True)
+
+    conditional = _caption(image, conditional_text)
+    unconditional = _caption(image)
+
+    return conditional, unconditional
+
+def classify_image(image_path):
+
+    vit_processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224")
+    vit_model = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224")
+
+    img = Image.open(image_path).convert("RGB")
+
+    batch = vit_processor(img, return_tensors="pt")
+
+    with torch.inference_mode():
+        result = vit_model(**batch)
+
+    class_index = torch.argmax(result.logits, dim=-1).item()
+    label = vit_model.config.id2label[class_index]
+
+    print("Predicted class:", label)
+    return label
