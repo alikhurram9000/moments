@@ -26,7 +26,10 @@ $ pdm install
 
 
 Command for additional dependencies
+
+```
 pip install torch torchvision transformers pillow
+```
 
 
 To initialize the app, run the `flask init-app` command:
