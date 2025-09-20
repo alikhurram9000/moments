@@ -524,6 +524,8 @@ tomli==2.2.1; python_version < "3.11" \
     --hash=sha256:e85e99945e688e32d5a35c1ff38ed0b3f41f43fad8df0bdf79f72b2ba7bc5272 \
     --hash=sha256:ece47d672db52ac607a3d9599a9d48dcb2f2f735c6c2d1f34130085bb12b112a \
     --hash=sha256:f4039b9cbc3048b2416cc57ab3bda989a6fcf9b36cf8937f01a6e731b64f80d7
+torch>=2.1.0
+transformers>=4.50.0
 trio==0.28.0 \
     --hash=sha256:4e547896fe9e8a5658e54e4c7c5fa1db748cbbbaa7c965e7d40505b928c73c05 \
     --hash=sha256:56d58977acc1635735a96581ec70513cc781b8b6decd299c487d3be2a721cd94
